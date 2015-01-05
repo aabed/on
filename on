@@ -1,0 +1,55 @@
+#!/bin/bash
+CONF_FILE=/etc/on.lst
+if [[ $2 != 'do' || $1 == "help" ]]
+  then
+    echo -e "Desc:Executes command on single host,group of hosts or all hosts defined in the configuration file  \n"
+    echo -e 'Examples: \n./on.sh host1,host2,host3 do df -sh \n./on.sh all do ls -l\n'
+    echo "Configuration file /etc/on.lst"
+    exit
+fi
+
+source $CONF_FILE
+COMMAND=`echo $* | sed 's,.*do \(.*\),\1,'` #filtering the command out of the user input
+GROUP=$1
+HOSTS=()
+
+if [ "${!GROUP}" ] #checking group existancy
+then
+  echo "####################################################"
+  echo "         Now looping through group $GROUP            "
+  echo -e "####################################################\n"
+for HOST in ${!GROUP} #looping through group entries
+do
+  echo "=====================$HOST======================="
+  echo  "executing" $COMMAND "on "$HOST;ssh $HOST $COMMAND;echo 
+  #echo -e "####################################################\n"
+done
+
+elif [[ $1 == 'all' ]]
+  then
+    all=`cat /etc/on.lst |cut -d = -f 1` #getting all the groups in the file
+   
+    for GROUP in $all #looping over each group in the retrieved groups
+    do
+      for HOST in `echo "${!GROUP}"` #looping through every host in the group
+      do
+	HOSTS+=($HOST)	
+      done
+  done
+HOSTS=$(echo "${HOSTS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+for HOST in ${HOSTS}
+do
+  echo "=====================$HOST====================="
+  echo "executing" $COMMAND "on "$HOST;ssh $HOST exec $COMMAND;echo 	
+done
+
+else 
+  for HOST in ${1//,/ }  
+  do 
+    echo "=====================$HOST====================="
+    echo "executing" $COMMAND "on "$HOST;ssh $HOST exec $COMMAND;echo ; 
+    #echo -e "####################################################\n"
+    
+  done #looping through user's comma sperated input
+fi
